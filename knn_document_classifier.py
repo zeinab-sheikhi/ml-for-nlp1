@@ -3,7 +3,17 @@ import statistics
 import numpy as np
 
 class Example:
-    
+    """
+        Parameters:
+        ---------- 
+        - example_number : int
+
+        - vector : {feature: float value}
+            vector representation of features and their corresponding non-null values
+
+        - gold_class : str
+            the corresponsing gold class for this example
+    """
     def __init__(self, example_number, gold_class):
         self.example_number = example_number
         self.gold_class = gold_class
@@ -13,7 +23,23 @@ class Example:
         self.vector[feature_name] = value
 
 class Indices:
-    
+    """ 
+        class to handle the correspondences from documents' classes to indices and from words to indices correspondences
+
+        Parameters: 
+        ----------
+        - classes: list
+            list containing the corresponding classes for documents
+        
+        - class_index_dict : dict
+            dict representation of classes and their corresponding indices
+        
+        - words : list
+            unique words in the whole dataset to be considered as the features
+        
+        - word_index_dict : dict
+            dict representation of the features and their corresponding indices in the BOW vector
+    """
     def __init__(self):
         self.classes = []
         self.class_index_dict = {}
@@ -37,12 +63,23 @@ class Indices:
         return len(self.classes)
     
     def index_from_class(self, class_lable):
+
+        """ if class_label is already known: return its index
+            otherwise, add it to the classes list and return its new index
+        """
+
         if class_lable not in self.class_index_dict:
             self.class_index_dict[class_lable] = len(self.classes)
             self.classes.append(class_lable)
         return self.class_index_dict[class_lable]
             
     def index_from_word(self, word, create_new=False):
+        
+        """ if word is already known : returns its index
+            otherwise, either add it to the words list and return its new index,
+            or returns None, if create_new is True
+        """
+        
         if word in self.word_index_dict:
             return self.word_index_dict[word]
         if not create_new:
@@ -57,21 +94,19 @@ class Indices:
 class KNNClassifier:    
     
     def __init__(self, n_neighbors=1,  use_weight=False, metric='cos'):
-    
         """
-    Parameters:
-    
-    n_neighbors : int, default=1
-        Number of neighboring samples
+        Parameters:
+        
+        n_neighbors : int, default=1
+            Number of neighbors to consider
 
-    use_weight : boolean, default=False
+        use_weight : boolean, default=False
 
-    metric : {'cos', 'dist'}, default='cos'
-        Distance metric for searching neighbors. Possible values:
-        - 'cos'  : cos similarity between Xtrain and Xtest
-        - 'dist' : distance 
-    
-    """
+        metric : {'cos', 'dist'}, default='cos'
+            Distance metric for searching neighbors. Possible values:
+            - 'cos'  : cos similarity between Xtrain and Xtest
+            - 'dist' : distance 
+        """
         self.k = n_neighbors
         self.use_weight = use_weight
         self.metric = metric
@@ -87,7 +122,7 @@ class KNNClassifier:
         
         num_samples = np.shape(X_test)[0]
         X_test_norm = normalize_row_vectors(X_test)
-        y_est = np.zeros((num_samples,1))
+        y_pred = np.zeros((num_samples,1))
         cos_matrix = np.matmul(X_test_norm, self.X_train_norm.T)
         cos_sorted_indices = np.argsort(-cos_matrix)
                     
@@ -95,9 +130,9 @@ class KNNClassifier:
                 k_neighbors_indices = [self.y_train[idx][0] for idx in cos_sorted_indices[sample][:self.k]]
                 k_neighbors_classes = sorted([self.indices.class_from_index(index)[0] for index in k_neighbors_indices])
                 estimated_class = statistics.mode(k_neighbors_classes)
-                y_est[sample] = self.indices.index_from_class(estimated_class)
+                y_pred[sample] = self.indices.index_from_class(estimated_class)
         
-        return y_est
+        return y_pred
 
     
     def evaluate(self, y_real, y_pred):
@@ -110,17 +145,22 @@ class KNNClassifier:
         return accuracy
 
 
-
 def normalize_row_vectors(X):
+        """
+            returns the normalized version of the row vectors in X(each row vector of X divided by its norm)
+        """
         row_square_sum = np.sum(X*X, axis=1)
         row_sqrt = np.sqrt(row_square_sum)
         X_normalized = np.divide(X,row_sqrt[:,None], out=X, where=X!=0) 
         return X_normalized
 
 
-
 def read_examples(infile, indices=None):
-    
+    """ 
+        Reads a .examples file and returns a list of Example instances 
+        if indices is not None but an instance of Indices, 
+        it is updated with potentially new words/indices while reading the examples
+    """
     stream = open(infile)
     example = None
     examples = []
@@ -149,7 +189,7 @@ def read_examples(infile, indices=None):
 
     return examples
 
-def build_matrices(examples, indices, is_train=True):
+def build_matrix(examples, indices, is_train=True):
     
     num_of_rows = len(examples)
     num_of_columns = indices.get_words_size()
@@ -187,13 +227,19 @@ indices = Indices()
 train_examples = read_examples(args.train_file, indices)
 test_examples = read_examples(args.test_file)
 
-(X_train, y_train) = build_matrices(train_examples, indices)
-(X_test, y_test) = build_matrices(test_examples, indices, is_train=False)
+(X_train, y_train) = build_matrix(train_examples, indices)
+(X_test, y_test) = build_matrix(test_examples, indices, is_train=False)
 
 knn = KNNClassifier(n_neighbors=args.k)
 knn.fit(X_train, y_train, indices)
 y_pred = knn.predict(X_test)
 accuracy = knn.evaluate(y_test, y_pred)
-for k in range(1,args.k + 1):
-    print(f"for k={k} the accuracy is: {accuracy}")
-# print(accuracy)
+print(f"for K={knn.k} the accuracy is: {accuracy}")
+
+## In case of getting accuracies for different Ks, run the below code
+# for k in range(1,args.k + 1):
+#     knn = KNNClassifier(n_neighbors=k)
+#     knn.fit(X_train, y_train, indices)
+#     y_pred = knn.predict(X_test)
+#     accuracy = knn.evaluate(y_test, y_pred)
+#     print(f"for K={k} the accuracy is: {accuracy}")
