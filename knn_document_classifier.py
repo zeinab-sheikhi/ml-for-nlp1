@@ -93,7 +93,7 @@ class Indices:
         
 class KNNClassifier:    
     
-    def __init__(self, n_neighbors=1,  use_weight=False, metric='cos'):
+    def __init__(self, n_neighbors=1,  use_weight=False, metric='cos', idf=False):
         """
         Parameters:
         
@@ -101,36 +101,42 @@ class KNNClassifier:
             Number of neighbors to consider
 
         use_weight : boolean, default=False
+            if True, weight points by the inverse of their distance
 
         metric : {'cos', 'dist'}, default='cos'
             Distance metric for searching neighbors. Possible values:
             - 'cos'  : cos similarity between Xtrain and Xtest
             - 'dist' : distance 
+        
+        idf : boolean, default=False
+            Use TF.IDF values in the BOW vectors
         """
         self.k = n_neighbors
         self.use_weight = use_weight
         self.metric = metric
+        self.idf = idf
 
     def fit(self, X, y, indices):
-        
-        self.X_train_norm = normalize_row_vectors(X)
+        self.X_train = X
         self.y_train = y
+        self.weights = np.identity(X.shape[1])
         self.indices = indices
+        
         return self
 
     def predict(self, X_test):
         
         num_samples = np.shape(X_test)[0]
-        X_test_norm = normalize_row_vectors(X_test)
         y_pred = np.zeros((num_samples,1))
-        cos_matrix = np.matmul(X_test_norm, self.X_train_norm.T)
+        cos_matrix = cos_similarity(X_test, X_train)
         cos_sorted_indices = np.argsort(-cos_matrix)
+        euclidean_mat = euclidean_matrix(X_test, X_train.T)
                     
-        for sample in range(num_samples):
-                k_neighbors_indices = [self.y_train[idx][0] for idx in cos_sorted_indices[sample][:self.k]]
-                k_neighbors_classes = sorted([self.indices.class_from_index(index)[0] for index in k_neighbors_indices])
-                estimated_class = statistics.mode(k_neighbors_classes)
-                y_pred[sample] = self.indices.index_from_class(estimated_class)
+        # for sample in range(num_samples):
+        #         k_neighbors_indices = [self.y_train[idx][0] for idx in cos_sorted_indices[sample][:self.k]]
+        #         k_neighbors_classes = sorted([self.indices.class_from_index(index)[0] for index in k_neighbors_indices])
+        #         estimated_class = statistics.mode(k_neighbors_classes)
+        #         y_pred[sample] = self.indices.index_from_class(estimated_class)
         
         return y_pred
 
@@ -153,6 +159,29 @@ def normalize_row_vectors(X):
         row_sqrt = np.sqrt(row_square_sum)
         X_normalized = np.divide(X,row_sqrt[:,None], out=X, where=X!=0) 
         return X_normalized
+
+def cos_similarity(X1, X2):
+    """
+        return the cosine similarity between X1 and X2 matrices
+    """
+    X1_norm = normalize_row_vectors(X1)
+    X2_norm = normalize_row_vectors(X2)
+    cos_matrix = np.matmul(X1_norm, X2_norm.T)
+    return cos_matrix
+
+
+def euclidean_distance(v1, v2):
+    """
+        returns the euclidean distance between two vectors
+    """
+    return np.sqrt(np.sum((v1 - v2) ** 2))
+
+def euclidean_matrix(X1, X2):
+    euc_matrix = np.zeros((X1.shape[0], X2.shape[1]))
+    for i in range(X1.shape[0]):
+            for j in range(0, X2.shape[1]):
+                euc_matrix[i, j] = euclidean_distance(X1[i], X2[:,j])
+    return euc_matrix
 
 
 def read_examples(infile, indices=None):
@@ -232,11 +261,12 @@ test_examples = read_examples(args.test_file)
 
 knn = KNNClassifier(n_neighbors=args.k)
 knn.fit(X_train, y_train, indices)
-y_pred = knn.predict(X_test)
-accuracy = knn.evaluate(y_test, y_pred)
-print(f"for K={knn.k} the accuracy is: {accuracy}")
+# y_pred = knn.predict(X_test)
+knn.predict(X_test)
+# accuracy = knn.evaluate(y_test, y_pred)
+# print(f"for K={knn.k} the accuracy is: {accuracy}")
 
-## In case of getting accuracies for different Ks, run the below code
+# In case of getting accuracies for different Ks, run the below code
 # for k in range(1,args.k + 1):
 #     knn = KNNClassifier(n_neighbors=k)
 #     knn.fit(X_train, y_train, indices)
