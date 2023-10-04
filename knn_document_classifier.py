@@ -102,6 +102,7 @@ class KNNClassifier:
 
         use_weight : boolean, default=False
             if True, weight points by the inverse of their distance
+            if False, all points in each neighborhood are weighted equally.
 
         metric : {'cos', 'dist'}, default='cos'
             Distance metric for searching neighbors. Possible values:
@@ -117,11 +118,11 @@ class KNNClassifier:
         self.idf = idf
 
     def fit(self, X, y, indices):
+        
         self.X_train = X
         self.y_train = y
         self.weights = np.identity(X.shape[1])
         self.indices = indices
-        
         return self
 
     def predict(self, X_test):
@@ -130,13 +131,23 @@ class KNNClassifier:
         y_pred = np.zeros((num_samples,1))
         cos_matrix = cos_similarity(X_test, X_train)
         cos_sorted_indices = np.argsort(-cos_matrix)
-        euclidean_mat = euclidean_matrix(X_test, X_train.T)
-                    
-        # for sample in range(num_samples):
-        #         k_neighbors_indices = [self.y_train[idx][0] for idx in cos_sorted_indices[sample][:self.k]]
-        #         k_neighbors_classes = sorted([self.indices.class_from_index(index)[0] for index in k_neighbors_indices])
-        #         estimated_class = statistics.mode(k_neighbors_classes)
-        #         y_pred[sample] = self.indices.index_from_class(estimated_class)
+        euclidean_matrix = euclidean_dist(X_test, X_train.T)
+        weights = np.vectorize(inverse)(euclidean_matrix)
+        weights_sorted = np.zeros(weights.shape)
+        # print(cos_matrix)
+        # print(euclidean_matrix)
+        # print(weights)
+    
+        for i in range(0, weights.shape[0]):
+            weights_sorted[i] = weights[i][cos_sorted_indices[i]]
+        
+        # print(weights_sorted)
+        for sample in range(num_samples):
+                k_neighbors_indices = [self.y_train[idx][0] for idx in cos_sorted_indices[sample][:self.k]]
+                k_neighbors_classes = sorted([self.indices.class_from_index(index)[0] for index in k_neighbors_indices])
+                print(k_neighbors_classes)
+                estimated_class = statistics.mode(k_neighbors_classes)
+                y_pred[sample] = self.indices.index_from_class(estimated_class)
         
         return y_pred
 
@@ -162,27 +173,26 @@ def normalize_row_vectors(X):
 
 def cos_similarity(X1, X2):
     """
-        return the cosine similarity between X1 and X2 matrices
+        return the cosine similarity between each row of X1 and each row of X2 matrices
     """
     X1_norm = normalize_row_vectors(X1)
     X2_norm = normalize_row_vectors(X2)
     cos_matrix = np.matmul(X1_norm, X2_norm.T)
     return cos_matrix
 
-
-def euclidean_distance(v1, v2):
+def euclidean_dist(X1, X2):
     """
-        returns the euclidean distance between two vectors
+        returns the euclidean distance between each row of X1 with each row of X2
     """
-    return np.sqrt(np.sum((v1 - v2) ** 2))
-
-def euclidean_matrix(X1, X2):
-    euc_matrix = np.zeros((X1.shape[0], X2.shape[1]))
+    euclidean_matrix = np.zeros((X1.shape[0], X2.shape[1]))
     for i in range(X1.shape[0]):
             for j in range(0, X2.shape[1]):
-                euc_matrix[i, j] = euclidean_distance(X1[i], X2[:,j])
-    return euc_matrix
+                euclidean_matrix[i, j] = np.sqrt(np.sum((X1[i] - X2[:,j]) ** 2))
+    return euclidean_matrix
 
+
+def inverse(n):
+    return 1/n
 
 def read_examples(infile, indices=None):
     """ 
