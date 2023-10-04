@@ -7,28 +7,27 @@ from utils.math_utils import inverse
 
 class KNNClassifier:
 
-    def __init__(self, n_neighbors=1, use_weight=False, metric='cos', idf=False):
+    def __init__(self, n_neighbors=1, cos_or_dist=True, use_weight=False, idf=False):
         """
         Parameters:
 
         n_neighbors : int, default=1
             Number of neighbors to consider
 
+        cos_or_dist: boolean, default=True
+            Distance metric for searching neighbors. 
+            if True, use cosine similarity, else use distance 
+
         use_weight : boolean, default=False
             if True, weight points by the inverse of their distance
             if False, all points in each neighborhood are weighted equally.
-
-        metric : {'cos', 'dist'}, default='cos'
-            Distance metric for searching neighbors. Possible values:
-            - 'cos'  : cos similarity between Xtrain and Xtest
-            - 'dist' : distance 
         
         idf : boolean, default=False
             Use TF.IDF values in the BOW vectors
         """
         self.k = n_neighbors
+        self.use_cos = cos_or_dist
         self.use_weight = use_weight
-        self.metric = metric
         self.idf = idf
 
     def fit(self, X, y, indices):
@@ -51,15 +50,15 @@ class KNNClassifier:
         # print(cos_matrix)
         print(euclidean_matrix)
         print(weights)
+        print(weights_sorted)
     
         for i in range(0, weights.shape[0]):
             weights_sorted[i] = weights[i][cos_sorted_indices[i]]
         
-        # print(weights_sorted)
         for sample in range(num_samples):
             k_neighbors_indices = [self.y_train[idx][0] for idx in cos_sorted_indices[sample][:self.k]]
             k_neighbors_classes = sorted([self.indices.class_from_index(index)[0] for index in k_neighbors_indices])
-            print(k_neighbors_classes)
+            # print(k_neighbors_classes)
             estimated_class = statistics.mode(k_neighbors_classes)
             y_pred[sample] = self.indices.index_from_class(estimated_class)
         

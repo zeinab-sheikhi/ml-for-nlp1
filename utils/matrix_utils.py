@@ -1,4 +1,5 @@
 # Set of helper methods for applying different operations on vectors or metrices
+
 import numpy as np
 
 
