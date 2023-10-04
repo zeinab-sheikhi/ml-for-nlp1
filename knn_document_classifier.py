@@ -131,12 +131,14 @@ class KNNClassifier:
         y_pred = np.zeros((num_samples,1))
         cos_matrix = cos_similarity(X_test, X_train)
         cos_sorted_indices = np.argsort(-cos_matrix)
+        
         euclidean_matrix = euclidean_dist(X_test, X_train.T)
+        
         weights = np.vectorize(inverse)(euclidean_matrix)
         weights_sorted = np.zeros(weights.shape)
         # print(cos_matrix)
-        # print(euclidean_matrix)
-        # print(weights)
+        print(euclidean_matrix)
+        print(weights)
     
         for i in range(0, weights.shape[0]):
             weights_sorted[i] = weights[i][cos_sorted_indices[i]]
