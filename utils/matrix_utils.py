@@ -23,13 +23,13 @@ def cos_similarity(X1, X2):
     return cos_matrix
 
 
-def minkowski_distance(v1, v2, p=2):
+def minkowski_distance(v1, v2, p):
     """
         return the minkowski distance between two vectors v1, and v2
         When p = 1, the distance becomes manhattan_distance
         When p = 2, the distance becomes euclidean_distance
     """
-    return sum(abs(e1 - e2)**p for e1, e2 in zip(v1, v2))**(1 / p)
+    return sum(pow(abs(e1 - e2), p) for e1, e2 in zip(v1, v2)) ** (1 / p)
 
 
 def euclidean_distance(X1, X2):
@@ -39,6 +39,6 @@ def euclidean_distance(X1, X2):
     euclidean_matrix = np.zeros((X1.shape[0], X2.shape[1]))
     for i in range(X1.shape[0]):
         for j in range(0, X2.shape[1]):
-            euclidean_matrix[i, j] = minkowski_distance(v1=X1[i], v2=X2[:, j])
-            # euclidean_matrix[i, j] = np.sqrt(np.sum((X1[i] - X2[:,j]) ** 2))
+            # euclidean_matrix[i, j] = minkowski_distance(v1=X1[i], v2=X2[:, j], p=2)
+            euclidean_matrix[i, j] = np.linalg.norm(X1[i] - X2[:, j])
     return euclidean_matrix

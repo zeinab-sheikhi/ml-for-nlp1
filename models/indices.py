@@ -1,3 +1,6 @@
+from utils.math_utils import log
+
+
 class Indices:
     """ 
         class to handle the correspondences from documents' classes to indices and from words to indices correspondences
@@ -15,12 +18,16 @@ class Indices:
         
         - word_index_dict : dict
             dict representation of the features and their corresponding indices in the BOW vector
+        
+        - idf: dict
+            dict representation of inverse document frequency for each word
     """
     def __init__(self):
         self.classes = []
         self.class_index_dict = {}
         self.words = []
         self.word_index_dict = {}
+        self.idf = {}
     
     def add_word(self, word):
         if word not in self.word_index_dict:
@@ -31,6 +38,15 @@ class Indices:
         if class_lable not in self.class_index_dict:
             self.class_index_dict[class_lable] = len(self.classes)
             self.classes.append(class_lable)  
+    
+    def update_df(self, word):        
+        if word not in self.idf:
+            self.idf[word] = 1
+        else:
+            self.idf[word] += 1
+
+    def create_idf(self, total_docs_num):
+        self.idf = {key: log(total_docs_num / (df + 1)) for key, df in self.idf.items()}
     
     def get_words_size(self):
         return len(self.words)
